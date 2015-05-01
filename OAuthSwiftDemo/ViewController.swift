@@ -11,7 +11,7 @@ import OAuthSwift
 
 class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
 
-    var services = ["Twitter", "Flickr", "Github", "Instagram", "Foursquare", "Fitbit", "Withings", "Linkedin", "Linkedin2", "Dropbox", "Dribbble", "Salesforce", "BitBucket", "GoogleDrive", "Smugmug", "Intuit"]
+    var services = ["Deskpass1","Deskpass2","Twitter", "Flickr", "Github", "Instagram", "Foursquare", "Fitbit", "Withings", "Linkedin", "Linkedin2", "Dropbox", "Dribbble", "Salesforce", "BitBucket", "GoogleDrive", "Smugmug", "Intuit"]
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -19,6 +19,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         let tableView: UITableView = UITableView(frame: self.view.bounds, style: .Plain)
         tableView.delegate = self
         tableView.dataSource = self
+        tableView.tableHeaderView = self.tableHeaderView()
         self.view.addSubview(tableView);
     }
 
@@ -26,6 +27,103 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         super.didReceiveMemoryWarning()
     }
 
+    var headerView :UIView!
+    var keyText :UITextField!
+    var secretText :UITextField!
+    func tableHeaderView() -> UIView {
+        if let header = self.headerView  {
+            return self.headerView
+        }
+        var frame = self.view.bounds; frame.size.height = 150.0
+        self.headerView = UIView(frame: frame)
+        self.headerView.backgroundColor = UIColor(white: 0.8, alpha: 1.0)
+        
+        var f = CGRect(x: 80, y: 10, width: 200.0, height: 44.0)
+        self.keyText = UITextField(frame: f)
+        self.keyText.adjustsFontSizeToFitWidth = true
+        self.keyText.borderStyle = UITextBorderStyle.RoundedRect
+        self.keyText.text = "a1NEdUPO4BuiSdUbIKTkrqvnIsODrhmnrvLFDAta"
+        self.headerView.addSubview(self.keyText)
+        
+        var f2 = f; f2.origin.x = 8
+        let keyLabel = UILabel(frame: f2)
+        keyLabel.text = "Key"
+        self.headerView.addSubview(keyLabel)
+        
+        f = CGRectOffset(f, 0.0, 64.0)
+        self.secretText = UITextField(frame: f)
+        self.secretText.adjustsFontSizeToFitWidth = true
+        self.secretText.borderStyle = UITextBorderStyle.RoundedRect
+        self.secretText.text = "KJeDT2OEBPAIwsbZsYlsftJQYm3j7UCQkwrGEWH7E2GxhOb68j"
+        self.headerView.addSubview(self.secretText)
+        
+        f2 = CGRectOffset(f2, 0.0, 64.0)
+        let secretLabel = UILabel(frame: f2)
+        secretLabel.text = "Secret"
+        self.headerView.addSubview(secretLabel)
+
+        return self.headerView
+    }
+    
+    func doOAuthDeskpass1(){
+        
+        let nonce = (NSUUID().UUIDString as NSString).substringToIndex(8)
+        println(nonce)
+        
+        let oauthswift = OAuth1Swift(
+            //            http://api.deskpass.desktimeapp.com/client
+            //            {
+            //                "client_key": "a1NEdUPO4BuiSdUbIKTkrqvnIsODrhmnrvLFDAta",
+            //                "client_secret": "KJeDT2OEBPAIwsbZsYlsftJQYm3j7UCQkwrGEWH7E2GxhOb68j"
+            //            }
+            
+            consumerKey:    self.keyText.text,
+            consumerSecret: self.secretText.text,
+            requestTokenUrl: "http://api.deskpass.desktimeapp.com/oauth/request_token",
+            authorizeUrl:    "http://api.deskpass.desktimeapp.com/oauth/authorize",
+            accessTokenUrl:  "http://api.deskpass.desktimeapp.com/oauth/access_token"
+        )
+        
+        oauthswift.webViewController = WebViewController()
+        oauthswift.authorizeWithCallbackURL( NSURL(string: "oauth-swift://oauth-callback/deskpass")!, success: {
+            credential, response in
+            
+            self.showAlertView("Deskpass", message: "auth_token:\(credential.oauth_token)\n\noauth_toke_secret:\(credential.oauth_token_secret)")
+            
+            var parameters =  Dictionary<String, AnyObject>()
+            oauthswift.client.get("http://api.deskpass.desktimeapp.com/spaces", parameters: parameters,
+                success: {
+                    data, response in
+                    let jsonDict: AnyObject! = NSJSONSerialization.JSONObjectWithData(data, options: nil, error: nil)
+                    println(jsonDict)
+                }, failure: {(error:NSError!) -> Void in
+                    println(error)
+            })
+            
+            }, failure: {(error:NSError!) -> Void in
+                println(error.localizedDescription)
+            }
+        )
+    }
+    
+    func doOAuthDeskpass2(){
+        let oauthswift = OAuth2Swift(
+            consumerKey:    "a1NEdUPO4BuiSdUbIKTkrqvnIsODrhmnrvLFDAta",
+            consumerSecret: "KJeDT2OEBPAIwsbZsYlsftJQYm3j7UCQkwrGEWH7E2GxhOb68j",
+            authorizeUrl:   "http://api.deskpass.desktimeapp.com/oauth/authorize",
+            responseType:   "token"
+        )
+        let state: String = generateStateWithLength(20) as String
+        oauthswift.authorizeWithCallbackURL( NSURL(string: "oauth-swift://oauth-callback/deskpass")!, scope: "", state: "", success: {
+            credential, response in
+            self.showAlertView("Deskpass", message: "oauth_token:\(credential.oauth_token)")
+            }, failure: {(error:NSError!) -> Void in
+                println(error.localizedDescription)
+        })
+        
+    }
+
+    
     func doOAuthTwitter(){
         let oauthswift = OAuth1Swift(
             consumerKey:    Twitter["consumerKey"]!,
@@ -410,7 +508,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
 
     func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int  {
-        return services.count
+        return 2    //services.count
     }
     
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath:NSIndexPath) -> UITableViewCell {
@@ -422,6 +520,10 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath:NSIndexPath) {
         var service: String = services[indexPath.row]
         switch service {
+            case "Deskpass1":
+                doOAuthDeskpass1()
+            case "Deskpass2":
+                doOAuthDeskpass2()
             case "Twitter":
                 doOAuthTwitter()
             case "Flickr":
