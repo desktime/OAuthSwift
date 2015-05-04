@@ -28,8 +28,8 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
 
     var headerView :UIView!
-    var keyText :UITextField!
-    var secretText :UITextField!
+    var emailText :UITextField!
+    var passwordText :UITextField!
     func tableHeaderView() -> UIView {
         if let header = self.headerView  {
             return self.headerView
@@ -39,27 +39,27 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         self.headerView.backgroundColor = UIColor(white: 0.8, alpha: 1.0)
         
         var f = CGRect(x: 80, y: 10, width: 200.0, height: 44.0)
-        self.keyText = UITextField(frame: f)
-        self.keyText.adjustsFontSizeToFitWidth = true
-        self.keyText.borderStyle = UITextBorderStyle.RoundedRect
-        self.keyText.text = "a1NEdUPO4BuiSdUbIKTkrqvnIsODrhmnrvLFDAta"
-        self.headerView.addSubview(self.keyText)
+        self.emailText = UITextField(frame: f)
+        self.emailText.adjustsFontSizeToFitWidth = true
+        self.emailText.borderStyle = UITextBorderStyle.RoundedRect
+        self.emailText.text = "ryan@elelsee.com"
+        self.headerView.addSubview(self.emailText)
         
         var f2 = f; f2.origin.x = 8
         let keyLabel = UILabel(frame: f2)
-        keyLabel.text = "Key"
+        keyLabel.text = "Email"
         self.headerView.addSubview(keyLabel)
         
         f = CGRectOffset(f, 0.0, 64.0)
-        self.secretText = UITextField(frame: f)
-        self.secretText.adjustsFontSizeToFitWidth = true
-        self.secretText.borderStyle = UITextBorderStyle.RoundedRect
-        self.secretText.text = "KJeDT2OEBPAIwsbZsYlsftJQYm3j7UCQkwrGEWH7E2GxhOb68j"
-        self.headerView.addSubview(self.secretText)
+        self.passwordText = UITextField(frame: f)
+        self.passwordText.adjustsFontSizeToFitWidth = true
+        self.passwordText.borderStyle = UITextBorderStyle.RoundedRect
+        self.passwordText.text = "password"
+        self.headerView.addSubview(self.passwordText)
         
         f2 = CGRectOffset(f2, 0.0, 64.0)
         let secretLabel = UILabel(frame: f2)
-        secretLabel.text = "Secret"
+        secretLabel.text = "Pass"
         self.headerView.addSubview(secretLabel)
 
         return self.headerView
@@ -71,18 +71,19 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         println(nonce)
         
         let oauthswift = OAuth1Swift(
-            //            http://api.deskpass.desktimeapp.com/client
-            //            {
-            //                "client_key": "a1NEdUPO4BuiSdUbIKTkrqvnIsODrhmnrvLFDAta",
-            //                "client_secret": "KJeDT2OEBPAIwsbZsYlsftJQYm3j7UCQkwrGEWH7E2GxhOb68j"
-            //            }
             
-            consumerKey:    self.keyText.text,
-            consumerSecret: self.secretText.text,
+            consumerKey:    "9b1DKYA6LMRUwNRzrol7IQ9jpynbCl8HSyrxjaAK",
+            consumerSecret: "Qk5Q5KMq25c8PyZzask3CC0LRu8wsujqzy1R1gB7QOn2eP0wp2",
+            
+            // This seem optional?
             requestTokenUrl: "http://api.deskpass.desktimeapp.com/oauth/request_token",
             authorizeUrl:    "http://api.deskpass.desktimeapp.com/oauth/authorize",
             accessTokenUrl:  "http://api.deskpass.desktimeapp.com/oauth/access_token"
         )
+        
+        /*
+        
+        Standard Flow...
         
         oauthswift.webViewController = WebViewController()
         oauthswift.authorizeWithCallbackURL( NSURL(string: "oauth-swift://oauth-callback/deskpass")!, success: {
@@ -104,12 +105,60 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
                 println(error.localizedDescription)
             }
         )
+        */
+        
+        
+        // Proprietary Flow...
+        
+        // Post email & password to endpoint
+        // >>> r = oauth.post("http://api.deskpass.desktimeapp.com/user/credentials", data={'username': 'ryan@elelsee.com', 'password': 'password'})
+        
+        let parameters = ["username":self.emailText.text!, "password":self.passwordText.text!]
+        oauthswift.client.post("http://api.deskpass.desktimeapp.com/user/credentials", parameters: parameters, success: { (data, response) -> Void in
+            let jsonDict: AnyObject! = NSJSONSerialization.JSONObjectWithData(data, options: nil, error: nil)
+            println(jsonDict)
+            
+            // Got a token & secret, apply these to the client
+            let oauth_token = jsonDict["oauth_token"] as! String!
+            let oauth_token_secret = jsonDict["oauth_token_secret"] as! String!
+
+            
+            oauthswift.client.credential.oauth_token = oauth_token
+            oauthswift.client.credential.oauth_token_secret = oauth_token_secret
+
+            // Test access...
+            
+            let parameters = ["test":"test"]
+            oauthswift.client.get("http://api.deskpass.desktimeapp.com/api/me", parameters: parameters, success: { (data, response) -> Void in
+                let jsonDict: AnyObject! = NSJSONSerialization.JSONObjectWithData(data, options: nil, error: nil)
+                println(jsonDict)
+
+                let username = jsonDict["username"] as! String!
+                
+                self.showAlertView("Deskpass", message: "Success. Logged in as user: \(username)")
+
+                
+            }, failure: { (error) -> Void in
+                println(error.localizedDescription)
+                
+                self.showAlertView("Deskpass Error", message: "Error, /api/me not found!\n\(error.code)")
+
+
+            })
+            
+        }) { (error) -> Void in
+            println(error.localizedDescription)
+
+            self.showAlertView("Deskpass Error", message: "Error, user/credentials incorrect!\n\(error.code)")
+
+        }
+        
     }
     
     func doOAuthDeskpass2(){
         let oauthswift = OAuth2Swift(
-            consumerKey:    "a1NEdUPO4BuiSdUbIKTkrqvnIsODrhmnrvLFDAta",
-            consumerSecret: "KJeDT2OEBPAIwsbZsYlsftJQYm3j7UCQkwrGEWH7E2GxhOb68j",
+            consumerKey:    "9b1DKYA6LMRUwNRzrol7IQ9jpynbCl8HSyrxjaAK",
+            consumerSecret: "Qk5Q5KMq25c8PyZzask3CC0LRu8wsujqzy1R1gB7QOn2eP0wp2",
             authorizeUrl:   "http://api.deskpass.desktimeapp.com/oauth/authorize",
             responseType:   "token"
         )
